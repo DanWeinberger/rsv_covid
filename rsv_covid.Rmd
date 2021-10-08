@@ -1,7 +1,7 @@
 ---
 title: "Re-emergence of RSV in the United States"
 author: "Dan Weinberger"
-date: "7/28/2021"
+date: "10/8/2021"
 output: html_document
 ---
 
@@ -59,59 +59,12 @@ test.grps <- list( c( 'RSV','ZA' ),
       )
 names(test.grps) <- c('S. Africa','Argentina', 'Brazil','France', 'France-Paris region')
 
-country.trends <- lapply(test.grps, function(x) gtrends(keyword=x[1], geo = x[2], category = 0, gprop='web'))
+country.trends <- lapply(test.grps, function(x) gtrends(keyword=x[1], geo = x[2], category = 0, gprop='web',onlyInterest=T))
 
 saveRDS(country.trends, 'country.data.rds')
 
 
 
-```
-
-
-
-
-## US States
-
-Searches for "RSV"
-```{r, results=FALSE, message=FALSE, warning=FALSE}
-l1a <- readRDS('all.state.data.rds')
-#l1 <- c(l1a, l1b)
-l2 <- lapply(l1a,function(x) lapply(x, '[[','interest_over_time'))
-l3 <- lapply(l2, function(x) do.call( 'rbind.data.frame', x))
-
-d1 <- do.call( 'rbind.data.frame', l3)
-
-d1.m <- melt(d1[,c('date','hits','geo', 'keyword')], id.vars=c('geo','date','keyword'))
-
-d1.m$value <- as.numeric(d1.m$value)
-#hist(d1.m$value[d1.m$geo=='US-FL'])
-d1.c <- acast(d1.m ,date~geo~keyword)
-
-
-#Case by weekN and year
-d1.m.alt <- d1.m
-
-dates2 <- MMWRweek(as.Date(d1.m$date))
-d1.m.alt <- cbind.data.frame(d1.m.alt,dates2[,c('MMWRyear', 'MMWRweek')])
-max.wk.yr <-  max(d1.m.alt$MMWRweek[d1.m.alt$MMWRyear==2021] )
-
-d1.m.alt$epiyr <- d1.m.alt$MMWRyear
-d1.m.alt$epiyr[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRyear[d1.m.alt$MMWRweek<=max.wk.yr] - 1
-d1.m.alt$epiwk <- d1.m.alt$MMWRweek
-d1.m.alt$epiwk[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRweek[d1.m.alt$MMWRweek<=max.wk.yr] + 52
-d1.m.alt$geo <- substr(d1.m.alt$geo,4,5)
-
-d1.c.alt <- acast(d1.m.alt ,epiyr~epiwk~geo~keyword, fun.aggregate = sum)
-
-
-last.wk <- max(d1.m.alt$epiwk[d1.m.alt$epiyr==2020] )
-d1.c.alt['2020',as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,,] <- NA
-
-
-```
-
-
-```{r, eval=F}
 #Metro region
 #https://stackoverflow.com/questions/61213647/what-do-gtrendsr-statistical-areas-correlate-with
 #Nielsen DMA map: http://bl.ocks.org/simzou/6459889
@@ -161,6 +114,52 @@ saveRDS(metro.trends, 'metro.data.rds')
  
 
 ```
+
+
+
+
+## US States
+
+Searches for "RSV"
+```{r, results=FALSE, message=FALSE, warning=FALSE}
+l1a <- readRDS('all.state.data.rds')
+#l1 <- c(l1a, l1b)
+l2 <- lapply(l1a,function(x) lapply(x, '[[','interest_over_time'))
+l3 <- lapply(l2, function(x) do.call( 'rbind.data.frame', x))
+
+d1 <- do.call( 'rbind.data.frame', l3)
+
+d1.m <- melt(d1[,c('date','hits','geo', 'keyword')], id.vars=c('geo','date','keyword'))
+
+d1.m$value <- as.numeric(d1.m$value)
+#hist(d1.m$value[d1.m$geo=='US-FL'])
+d1.c <- acast(d1.m ,date~geo~keyword)
+
+
+#Case by weekN and year
+d1.m.alt <- d1.m
+
+dates2 <- MMWRweek(as.Date(d1.m$date))
+d1.m.alt <- cbind.data.frame(d1.m.alt,dates2[,c('MMWRyear', 'MMWRweek')])
+max.wk.yr <-  max(d1.m.alt$MMWRweek[d1.m.alt$MMWRyear==2021] )
+
+d1.m.alt$epiyr <- d1.m.alt$MMWRyear
+d1.m.alt$epiyr[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRyear[d1.m.alt$MMWRweek<=max.wk.yr] - 1
+d1.m.alt$epiwk <- d1.m.alt$MMWRweek
+d1.m.alt$epiwk[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRweek[d1.m.alt$MMWRweek<=max.wk.yr] + 52
+d1.m.alt$geo <- substr(d1.m.alt$geo,4,5)
+
+d1.c.alt <- acast(d1.m.alt ,epiyr~epiwk~geo~keyword, fun.aggregate = sum)
+
+
+last.wk <- max(d1.m.alt$epiwk[d1.m.alt$epiyr==2020] )
+d1.c.alt['2020',as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,,] <- NA
+
+
+```
+
+
+
 
 ```{r, fig.width=8, fig.height=6,results=FALSE, message=FALSE, warning=FALSE}
 
@@ -472,13 +471,37 @@ Florida
 cols <- c(rep('gray',4),rgb(1,0,0,0.3),'blue','blue')
 linetypes=c(rep(1,5),2,2)
 select.counties <- grep('US-FL', dimnames(d1.c.alt)[[3]] )
+
+select.counties2 <- c(grep('US-MA', dimnames(d1.c.alt)[[3]] ),
+grep('US-CT', dimnames(d1.c.alt)[[3]] ),
+grep('US-NH', dimnames(d1.c.alt)[[3]] ),
+grep('US-RI', dimnames(d1.c.alt)[[3]] ),
+grep('US-VT', dimnames(d1.c.alt)[[3]] ))
+
 county.labs <- substring( dimnames(d1.c.alt)[[3]], first=11)
 
 cols <- c(rep('gray',3),rgb(1,0,0,0.3),'blue','blue')
 linetypes=c(rep(1,5),2)
 counties <- dimnames(d1.c.alt)[[3]]
+```
+
+Florida
+
+```{r, fig.width=10, fig.height=10, results=FALSE, message=FALSE, warning=FALSE}
 par(mfrow=c(3,3), mar=c(2,2,1,0))
 lapply(select.counties, function(x){
+  matplot(t(d1.c.alt[,,x,'rsv']), type='l', col=cols, bty='l', xlab='', ylab='', xlim=c(1,52), main=county.labs[x], lty=linetypes)
+abline(v=36, lty=2, col='gray')
+})
+```
+
+New England
+
+```{r, fig.width=10, fig.height=10, results=FALSE, message=FALSE, warning=FALSE}
+
+par(mfrow=c(2,2), mar=c(2,2,1,0))
+
+lapply(select.counties2, function(x){
   matplot(t(d1.c.alt[,,x,'rsv']), type='l', col=cols, bty='l', xlab='', ylab='', xlim=c(1,52), main=county.labs[x], lty=linetypes)
 abline(v=36, lty=2, col='gray')
 })
