@@ -1,7 +1,7 @@
 ---
 title: "Re-emergence of RSV in the United States"
 author: "Dan Weinberger"
-date: "3/7/2022"
+date: "5/19/2022"
 output: html_document
 ---
 
@@ -20,6 +20,7 @@ library(gtrendsR)
 library(pbapply)
 library(reshape2)
 library(MMWRweek)
+library(dplyr)
 library(ggplot2)
 library(geofacet)
 library(plotrix)
@@ -31,8 +32,7 @@ In these plots, we pulled searches for 'RSV' from Google trends using the gtrend
 ```{r, eval=F}
 
 state.abb.us <- paste0('US-', state.abb)
-#searches <- c("flu",'pneumonia','fever','rsv', 'bronchiolitis')
-searches <- c('rsv', 'bronchiolitis')
+searches <- c('rsv')
 
 
 state.trends <- pblapply(state.abb.us, function(x) {
@@ -141,10 +141,20 @@ d1.m.alt <- d1.m
 
 dates2 <- MMWRweek(as.Date(d1.m$date))
 d1.m.alt <- cbind.data.frame(d1.m.alt,dates2[,c('MMWRyear', 'MMWRweek')])
-max.wk.yr <-  max(d1.m.alt$MMWRweek[d1.m.alt$MMWRyear==2021] )
+max.wk.yr <-  max(d1.m.alt$MMWRweek[d1.m.alt$MMWRyear==max(d1.m.alt$MMWRyear)] )
+
 
 d1.m.alt$epiyr <- d1.m.alt$MMWRyear
+
 d1.m.alt$epiyr[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRyear[d1.m.alt$MMWRweek<=max.wk.yr] - 1
+
+d1.m.alt <- d1.m.alt %>%
+  group_by(geo,epiyr) %>%
+  arrange(MMWRyear, MMWRweek) %>%
+  mutate(epiwk=row_number()) %>%
+  ungroup()
+
+
 d1.m.alt$epiwk <- d1.m.alt$MMWRweek
 d1.m.alt$epiwk[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRweek[d1.m.alt$MMWRweek<=max.wk.yr] + 52
 d1.m.alt$geo <- substr(d1.m.alt$geo,4,5)
@@ -152,8 +162,9 @@ d1.m.alt$geo <- substr(d1.m.alt$geo,4,5)
 d1.c.alt <- acast(d1.m.alt ,epiyr~epiwk~geo~keyword, fun.aggregate = sum)
 
 
-last.wk <- max(d1.m.alt$epiwk[d1.m.alt$epiyr==2020] )
-d1.c.alt['2020',as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,,] <- NA
+last.wk <- max(d1.m.alt$epiwk[d1.m.alt$epiyr==max(d1.m.alt$epiyr)] )
+lastyr.char <- dimnames(d1.c.alt)[[1]][dim(d1.c.alt)[1]]
+d1.c.alt[lastyr.char,as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,,] <- NA
 
 
 ```
@@ -166,7 +177,7 @@ d1.c.alt['2020',as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,,] <- NA
 df1 <- dcast(d1.m.alt[d1.m.alt$keyword=='rsv',] ,epiyr+epiwk+geo~., fun.aggregate = sum)
 names(df1) <- c('epiyr','epiwk','state','cases')
 
-cols <- c(rep('gray',3),rgb(1,0,0,0.5),'blue','blue')
+cols <- c(rep('gray',3),rgb(1,0,0,0.5),'blue')
 ltypes <- c(rep(1,3),2,1,1)
 
 my_us_grid <- us_state_grid1[c(-2, -11,-51), ]
@@ -222,7 +233,7 @@ abline(v=36, lty=2, col='gray')
 ## Selected states
 
 ```{r, fig.width=8, fig.height=6, results=FALSE, message=FALSE, warning=FALSE}
-cols <- c(rep('gray',4),rgb(1,0,0,0.3),'blue','blue')
+cols <- c(rep('gray',3),rgb(1,0,0,0.3),'blue')
 linetypes=c(rep(1,5),2,2)
 states <- dimnames(d1.c.alt)[[3]]
 
@@ -285,56 +296,10 @@ p1
 
 
 
-## Bronchiolitis in US
-
-If we look at searches for 'bronchiolitis', the picture is a bit more mixed, with several states showing recent increases.
-
-```{r, fig.width=8, fig.height=6,results=FALSE, message=FALSE, warning=FALSE}
-
-df1 <- dcast(d1.m.alt[d1.m.alt$keyword=='bronchiolitis',] ,epiyr+epiwk+geo~., fun.aggregate = sum)
-names(df1) <- c('epiyr','epiwk','state','cases')
-
-cols <- c(rep('gray',3),rgb(1,0,0,0.5),'blue','blue')
-ltypes <- c(rep(1,3),2,1,1)
-
-my_us_grid <- us_state_grid1[c(-2, -11,-51), ]
-
-df1$epiyr <- as.factor(df1$epiyr)
-theme_set(theme_minimal())
-p1 <- ggplot(df1, aes(
-  x = epiwk,
-  y = cases,
-  group = epiyr,
-  colour = epiyr
-)) +
-  geom_line(aes(lty = epiyr)) +
-  scale_color_manual(values = cols) +
-  scale_linetype_manual(values = ltypes) +
-  labs(title = "Searches for bronchiolitis (Google trends)",
-       x = element_blank(),
-       y = element_blank()) +
-  theme(
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    panel.background = element_blank(),
-    axis.line = element_line(colour = "black"),
-    legend.position = "none",
-    axis.text.x = element_blank(),
-    axis.text.y = element_blank(),
-    axis.title.x = element_blank(),
-    axis.title.y = element_blank(),
-    axis.ticks = element_blank(),
-    axis.line.x = element_blank(),
-    axis.line.y = element_blank(),
-    plot.title = element_text(size = 24),
-    strip.background = element_rect(color = "white")
-  ) +
-  facet_geo( ~ state, grid = my_us_grid)
-p1
-```
 
 ## Other Countries 
 
+Northern Hemisphere shows most recent 52 weeks; Southern Hemisphere shows current calendar year
 ```{r results=FALSE, message=FALSE, warning=FALSE}
 l1b <- readRDS( 'country.data.rds')
 
@@ -354,7 +319,7 @@ d1.m.alt <- d1.m
 
 dates2 <- MMWRweek(as.Date(d1.m$date))
 d1.m.alt <- cbind.data.frame(d1.m.alt,dates2[,c('MMWRyear', 'MMWRweek')])
-max.wk.yr <-  max(d1.m.alt$MMWRweek[d1.m.alt$MMWRyear==2021] )
+max.wk.yr <-  max(d1.m.alt$MMWRweek[d1.m.alt$MMWRyear==max(d1.m.alt$MMWRyear)] )
 
 d1.m.alt$epiyr <- d1.m.alt$MMWRyear
 d1.m.alt$epiyr[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRyear[d1.m.alt$MMWRweek<=max.wk.yr] - 1
@@ -365,8 +330,9 @@ d1.m.alt$epiwk[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRweek[d1.m.alt$MMWRw
 d1.c.alt <- acast(d1.m.alt ,epiyr~epiwk~geo, fun.aggregate = sum)
 
 
-last.wk <- max(d1.m.alt$epiwk[d1.m.alt$epiyr==2020] )
-d1.c.alt['2020',as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,] <- NA
+last.wk <- max(d1.m.alt$epiwk[d1.m.alt$epiyr==max(d1.m.alt$epiyr)] )
+lastyr.char <- dimnames(d1.c.alt)[[1]][dim(d1.c.alt)[1]]
+d1.c.alt[lastyr.char,as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,] <- NA
 
 countries <- c('GB','FR','FR-J')
 
@@ -401,8 +367,9 @@ d1.m.alt <- cbind.data.frame(d1.m.alt,dates2[,c('MMWRyear', 'MMWRweek')])
 
 d1.c.alt <- acast(d1.m.alt ,MMWRyear~MMWRweek~geo, fun.aggregate = sum)
 
-last.wk <- max(d1.m.alt$MMWRweek[d1.m.alt$MMWRyear==2021] )
-d1.c.alt['2021',as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,] <- NA
+last.wk <- max(d1.m.alt$MMWRweek[d1.m.alt$MMWRyear==max(d1.m.alt$MMWRyear)] )
+d1.c.alt[dimnames(d1.c.alt)[[1]][dim(d1.c.alt)[1]]
+,as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,] <- NA
 
 countries <- c( 'AR','BR','ZA')
 
@@ -448,10 +415,11 @@ d1.m.alt <- d1.m
 
 dates2 <- MMWRweek(as.Date(d1.m$date))
 d1.m.alt <- cbind.data.frame(d1.m.alt,dates2[,c('MMWRyear', 'MMWRweek')])
-max.wk.yr <-  max(d1.m.alt$MMWRweek[d1.m.alt$MMWRyear==2021] )
+max.wk.yr <-  max(d1.m.alt$MMWRweek[d1.m.alt$MMWRyear==max(d1.m.alt$MMWRyear)] )
 
 d1.m.alt$epiyr <- d1.m.alt$MMWRyear
 d1.m.alt$epiyr[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRyear[d1.m.alt$MMWRweek<=max.wk.yr] - 1
+
 d1.m.alt$epiwk <- d1.m.alt$MMWRweek
 d1.m.alt$epiwk[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRweek[d1.m.alt$MMWRweek<=max.wk.yr] + 52
 #d1.m.alt$geo <- substr(d1.m.alt$geo,4,5)
@@ -459,8 +427,9 @@ d1.m.alt$epiwk[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRweek[d1.m.alt$MMWRw
 d1.c.alt <- acast(d1.m.alt ,epiyr~epiwk~geo+city_name~keyword, fun.aggregate = sum)
 
 
-last.wk <- max(d1.m.alt$epiwk[d1.m.alt$epiyr==2020] )
-d1.c.alt['2020',as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,,] <- NA
+last.wk <- max(d1.m.alt$epiwk[d1.m.alt$epiyr==max(d1.m.alt$epiyr)] )
+lastyr.char <- dimnames(d1.c.alt)[[1]][dim(d1.c.alt)[1]]
+d1.c.alt[lastyr.char,as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,,] <- NA
 ```
 
 ## Selected counties
@@ -468,7 +437,7 @@ d1.c.alt['2020',as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,,] <- NA
 Florida
 
 ```{r, fig.width=10, fig.height=10, results=FALSE, message=FALSE, warning=FALSE}
-cols <- c(rep('gray',4),rgb(1,0,0,0.3),'blue','blue')
+cols <- c(rep('gray',4),rgb(1,0,0,0.3),'blue')
 linetypes=c(rep(1,5),2,2)
 select.counties <- grep('US-FL', dimnames(d1.c.alt)[[3]] )
 
@@ -508,7 +477,7 @@ abline(v=36, lty=2, col='gray')
 
 ```
 
-New England
+New England-most recent 52 weeks
 
 ```{r, fig.width=10, fig.height=10, results=FALSE, message=FALSE, warning=FALSE}
 cols <- c(rep('gray',4),rgb(1,0,0,0.3),'blue','blue')
