@@ -23,10 +23,11 @@ library(MMWRweek)
 library(dplyr)
 library(ggplot2)
 library(geofacet)
+library(lubridate)
 library(plotrix)
 source('./R/runIfExpired.R')
 
-updateData = TRUE
+updateData = FALSE
 
 ```
 
@@ -125,7 +126,7 @@ names(metro.trends) <- metros$name[n.states > 0]
 
 
 
-## US States
+## US States, most recent 52 weeks
 
 Searches for "RSV"
 ```{r, results=FALSE, message=FALSE, warning=FALSE}
@@ -237,7 +238,7 @@ abline(v=36, lty=2, col='gray')
 
 ```
 
-## Selected states
+## Selected states, most recent 52 weeks
 
 ```{r, fig.width=8, fig.height=6, results=FALSE, message=FALSE, warning=FALSE}
 cols <- c(rep('gray',3),rgb(1,0,0,0.3),'blue')
