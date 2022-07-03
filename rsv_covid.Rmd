@@ -1,7 +1,7 @@
 ---
 title: "Re-emergence of RSV in the United States"
 author: "Dan Weinberger"
-date: "6/9/2022"
+date: "7/3/2022"
 output: html_document
 ---
 
@@ -24,26 +24,35 @@ library(dplyr)
 library(ggplot2)
 library(geofacet)
 library(plotrix)
+source('./R/runIfExpired.R')
+
+updateData = TRUE
+
 ```
 
 In these plots, we pulled searches for 'RSV' from Google trends using the gtrendsR package. Previous work found that Google searches for 'RSV' capture spatiotemporal variations in RSV activity across the US: https://www.biorxiv.org/content/10.1101/607119v1
 
 
-```{r, eval=F}
+```{r}
+
+if(updateData==T){
+  t1=0
+}else{
+  t1=99999999999999999999
+}
 
 state.abb.us <- paste0('US-', state.abb)
 searches <- c('rsv')
 
 
-state.trends <- pblapply(state.abb.us, function(x) {
+state.trends <- runIfExpired('state.trends',maxage=t1, ~pblapply(state.abb.us, function(x) {
     lapply(searches, function(y){
         gtrends(keyword=y, geo = c(x), category = 0, gprop='web')
     })
   }
 )
+)
 
-
-saveRDS(state.trends, 'all.state.data.rds')
 
 #Other geographies
 #
@@ -59,10 +68,8 @@ test.grps <- list( c( 'RSV','ZA' ),
       )
 names(test.grps) <- c('S. Africa','Argentina', 'Brazil','France', 'France-Paris region')
 
-country.trends <- lapply(test.grps, function(x) gtrends(keyword=x[1], geo = x[2], category = 0, gprop='web',onlyInterest=T))
-
-saveRDS(country.trends, 'country.data.rds')
-
+country.trends <- runIfExpired('country.trends',maxage=t1, ~lapply(test.grps, function(x) gtrends(keyword=x[1], geo = x[2], category = 0, gprop='web',onlyInterest=T))
+)
 
 
 #Metro region
@@ -102,16 +109,16 @@ all.metro.combos <- all.metro.combos[!is.na(all.metro.combos)]
 
 searches <- c('rsv')
 
-metro.trends <- pblapply(all.metro.combos, function(x) {
+metro.trends <- runIfExpired('metro.trends',maxage=t1, ~pblapply(all.metro.combos, function(x) {
     lapply(searches, function(y){
         tryCatch(gtrends(keyword=y, geo = c(x), category = 0, gprop='web',onlyInterest=T), error=function(e) NULL)
     })
   }
 )
+)
 names(metro.trends) <- metros$name[n.states > 0]
 
-saveRDS(metro.trends, 'metro.data.rds')
- 
+
 
 ```
 
@@ -122,7 +129,7 @@ saveRDS(metro.trends, 'metro.data.rds')
 
 Searches for "RSV"
 ```{r, results=FALSE, message=FALSE, warning=FALSE}
-l1a <- readRDS('all.state.data.rds')
+l1a <- state.trends
 #l1 <- c(l1a, l1b)
 l2 <- lapply(l1a,function(x) lapply(x, '[[','interest_over_time'))
 l3 <- lapply(l2, function(x) do.call( 'rbind.data.frame', x))
@@ -301,7 +308,7 @@ p1
 
 Northern Hemisphere shows most recent 52 weeks; Southern Hemisphere shows current calendar year
 ```{r results=FALSE, message=FALSE, warning=FALSE}
-l1b <- readRDS( 'country.data.rds')
+l1b <- country.trends
 
 l2 <- lapply(l1b,  '[[','interest_over_time')
 
@@ -389,7 +396,7 @@ lapply(countries, function(x){
 ## US Counties
 
 ```{r}
-l1a <- readRDS('metro.data.rds')
+l1a <- metro.trends
 #l1 <- c(l1a, l1b)
 l2 <- lapply(l1a,function(x) lapply(x, '[[','interest_over_time'))
 l3 <- lapply(l2, function(x) do.call( 'rbind.data.frame', x))
