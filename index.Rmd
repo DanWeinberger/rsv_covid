@@ -126,7 +126,7 @@ names(metro.trends) <- metros$name[n.states > 0]
 
 
 
-## US States, most recent 52 weeks
+## US States
 
 Searches for "RSV"
 ```{r, results=FALSE, message=FALSE, warning=FALSE}
@@ -136,6 +136,8 @@ l2 <- lapply(l1a,function(x) lapply(x, '[[','interest_over_time'))
 l3 <- lapply(l2, function(x) do.call( 'rbind.data.frame', x))
 
 d1 <- do.call( 'rbind.data.frame', l3)
+
+d1$geo <-gsub('US-','',d1$geo)
 
 d1.m <- melt(d1[,c('date','hits','geo', 'keyword')], id.vars=c('geo','date','keyword'))
 
@@ -156,23 +158,14 @@ d1.m.alt$epiyr <- d1.m.alt$MMWRyear
 
 d1.m.alt$epiyr[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRyear[d1.m.alt$MMWRweek<=max.wk.yr] - 1
 
-d1.m.alt <- d1.m.alt %>%
-  group_by(geo,epiyr) %>%
-  arrange(MMWRyear, MMWRweek) %>%
-  mutate(epiwk=row_number()) %>%
-  ungroup()
+d1.c.alt <- acast(d1.m.alt ,MMWRyear~MMWRweek~geo~keyword, fun.aggregate = sum)
 
 
-d1.m.alt$epiwk <- d1.m.alt$MMWRweek
-d1.m.alt$epiwk[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRweek[d1.m.alt$MMWRweek<=max.wk.yr] + 52
-d1.m.alt$geo <- substr(d1.m.alt$geo,4,5)
+ last.wk <- max(d1.m.alt$MMWRweek[d1.m.alt$MMWRyear==max(d1.m.alt$MMWRyear)] )
 
-d1.c.alt <- acast(d1.m.alt ,epiyr~epiwk~geo~keyword, fun.aggregate = sum)
-
-
-last.wk <- max(d1.m.alt$epiwk[d1.m.alt$epiyr==max(d1.m.alt$epiyr)] )
-lastyr.char <- dimnames(d1.c.alt)[[1]][dim(d1.c.alt)[1]]
-d1.c.alt[lastyr.char,as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,,] <- NA
+ lastyr.char <- dimnames(d1.c.alt)[[1]][dim(d1.c.alt)[1]]
+ 
+ d1.c.alt[lastyr.char,as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,,] <- NA
 
 
 ```
@@ -182,26 +175,27 @@ d1.c.alt[lastyr.char,as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,,] <- NA
 
 ```{r, fig.width=8, fig.height=6,results=FALSE, message=FALSE, warning=FALSE}
 
-df1 <- dcast(d1.m.alt[d1.m.alt$keyword=='rsv',] ,epiyr+epiwk+geo~., fun.aggregate = sum)
-names(df1) <- c('epiyr','epiwk','state','cases')
+df1 <- dcast(d1.m.alt[d1.m.alt$keyword=='rsv',] ,MMWRyear+MMWRweek+geo~., fun.aggregate = sum)
+names(df1) <- c('year','week','state','cases')
 
-cols <- c(rep('gray',3),rgb(1,0,0,0.5),'blue')
+df1$state <- gsub('US-','',df1$state)
+cols <- c(rep('gray',4),rgb(1,0,0,0.2),'blue')
 ltypes <- c(rep(1,3),2,1,1)
 
 my_us_grid <- us_state_grid1[c(-2, -11,-51), ]
 
-df1$epiyr <- as.factor(df1$epiyr)
+df1$year <- as.factor(df1$year)
 theme_set(theme_minimal())
 p1 <- ggplot(df1, aes(
-  x = epiwk,
+  x = week,
   y = cases,
-  group = epiyr,
-  colour = epiyr
+  group = year,
+  colour = year
 )) +
-  geom_line(aes(lty = epiyr)) +
+  geom_line(aes(lty = year)) +
   scale_color_manual(values = cols) +
   scale_linetype_manual(values = ltypes) +
-  labs(title = "Searches for 'RSV' (Google trends), last 52 wks",
+  labs(title = "Searches for 'RSV in the US' (Google trends)",subtitle='By calendar year',
        x = element_blank(),
        y = element_blank()) +
   theme(
@@ -226,20 +220,20 @@ p1
 
 
 
-## Selected states, most recent 52 weeks
+## Selected states, by calendar year
 
 ```{r, fig.width=8, fig.height=6, results=FALSE, message=FALSE, warning=FALSE}
-cols <- c(rep('gray',3),rgb(1,0,0,0.3),'blue')
+cols <- c(rep('gray',4),rgb(1,0,0,0.3),'blue')
 linetypes=c(rep(1,5),2,2)
 states <- dimnames(d1.c.alt)[[3]]
 
 select.states <-c('FL','GA','NY','CA','WA','MD','TX','IL','WI')
-cols <- c(rep('gray',3),rgb(1,0,0,0.3),'blue','blue')
+cols <- c(rep('gray',4),rgb(1,0,0,0.3),'blue')
 linetypes=c(rep(1,5),2)
 states <- dimnames(d1.c.alt)[[3]]
 par(mfrow=c(3,3), mar=c(2,2,1,0))
 lapply(select.states, function(x){
-  matplot(t(d1.c.alt[,,x,'rsv']), type='l', col=cols, bty='l', xlab='', ylab='', xlim=c(1,52), main=x, lty=linetypes)
+  matplot(t(d1.c.alt[,1:52,x,'rsv']), type='l', col=cols, bty='l', xlab='', ylab='', xlim=c(1,52), main=x, lty=linetypes)
 abline(v=36, lty=2, col='gray')
 })
 
@@ -250,19 +244,19 @@ abline(v=36, lty=2, col='gray')
 This plots the time series on a circular axis, showing the shift in timing compared to normal. Blue shows the periods since July 2020
 
 ```{r, fig.width=8, fig.height=6,results=FALSE, message=FALSE, warning=FALSE}
-df1$epiyr <- as.factor(df1$epiyr)
+df1$year <- as.factor(df1$year)
 
-cols <- c(rep('gray',3),'red','blue')
+cols <- c(rep('gray',4),'red','blue')
 linetypes=c(rep(1,5),1,1)
 
 theme_set(theme_minimal())
 p1 <- ggplot(df1, aes(
-  x = epiwk,
+  x = week,
   y = cases,
-  group = epiyr,
-  colour = epiyr
+  group = year,
+  colour = year
 )) +
-  geom_line(aes(lty = epiyr)) +
+  geom_line(aes(lty = year)) +
   coord_polar() +
   scale_color_manual(values = cols) +
   scale_linetype_manual(values = ltypes) +
@@ -293,9 +287,9 @@ p1
 
 
 
-## Other Countries 
+## Other Countries, by calendar year
 
-Northern Hemisphere shows most recent 52 weeks; Southern Hemisphere shows current calendar year
+
 ```{r results=FALSE, message=FALSE, warning=FALSE}
 l1b <- country.trends
 
@@ -323,20 +317,20 @@ d1.m.alt$epiwk <- d1.m.alt$MMWRweek
 d1.m.alt$epiwk[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRweek[d1.m.alt$MMWRweek<=max.wk.yr] + 52
 #d1.m.alt$geo <- substr(d1.m.alt$geo,4,5)
 
-d1.c.alt <- acast(d1.m.alt ,epiyr~epiwk~geo, fun.aggregate = sum)
+d1.c.alt <- acast(d1.m.alt ,MMWRyear~MMWRweek~geo, fun.aggregate = sum)
 
 
-last.wk <- max(d1.m.alt$epiwk[d1.m.alt$epiyr==max(d1.m.alt$epiyr)] )
+last.wk <- max(d1.m.alt$MMWRweek[d1.m.alt$MMWRyear==max(d1.m.alt$MMWRyear)] )
 lastyr.char <- dimnames(d1.c.alt)[[1]][dim(d1.c.alt)[1]]
 d1.c.alt[lastyr.char,as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,] <- NA
 
 countries <- c('GB','FR','FR-J')
 
-cols <- c(rep('gray',3),rgb(1,0,0,0.3),'blue','blue')
+cols <- c(rep('gray',4),rgb(1,0,0,0.3),'blue')
 states <- dimnames(d1.c.alt)[[3]]
 par(mfrow=c(1,1), mar=c(2,2,1,0))
 lapply(countries, function(x){
-  matplot(t(d1.c.alt[,,x]), type='l', col=cols, bty='l', xlab='', ylab='', xlim=c(1,52), main=x, lty=linetypes)
+  matplot(t(d1.c.alt[,1:52,x]), type='l', col=cols, bty='l', xlab='', ylab='', xlim=c(1,52), main=x, lty=linetypes)
 
 })
 ```
@@ -420,10 +414,10 @@ d1.m.alt$epiwk <- d1.m.alt$MMWRweek
 d1.m.alt$epiwk[d1.m.alt$MMWRweek<=max.wk.yr] <- d1.m.alt$MMWRweek[d1.m.alt$MMWRweek<=max.wk.yr] + 52
 #d1.m.alt$geo <- substr(d1.m.alt$geo,4,5)
 
-d1.c.alt <- acast(d1.m.alt ,epiyr~epiwk~geo+city_name~keyword, fun.aggregate = sum)
+d1.c.alt <- acast(d1.m.alt ,MMWRyear~MMWRweek~geo+city_name~keyword, fun.aggregate = sum)
 
 
-last.wk <- max(d1.m.alt$epiwk[d1.m.alt$epiyr==max(d1.m.alt$epiyr)] )
+last.wk <- max(d1.m.alt$MMWRweek[d1.m.alt$MMWRyear==max(d1.m.alt$MMWRyear)] )
 lastyr.char <- dimnames(d1.c.alt)[[1]][dim(d1.c.alt)[1]]
 d1.c.alt[lastyr.char,as.numeric(dimnames(d1.c.alt)[[2]])>last.wk,,] <- NA
 ```
@@ -445,7 +439,7 @@ grep('US-VT', dimnames(d1.c.alt)[[3]] ))
 
 county.labs <- substring( dimnames(d1.c.alt)[[3]], first=11)
 
-cols <- c(rep('gray',3),rgb(1,0,0,0.3),'blue','blue')
+cols <- c(rep('gray',4),rgb(1,0,0,0.3),'blue')
 linetypes=c(rep(1,5),2)
 counties <- dimnames(d1.c.alt)[[3]]
 ```
@@ -455,7 +449,7 @@ Florida
 ```{r, fig.width=10, fig.height=10, results=FALSE, message=FALSE, warning=FALSE}
 par(mfrow=c(3,3), mar=c(2,2,1,0))
 lapply(select.counties, function(x){
-  matplot(t(d1.c.alt[,,x,'rsv']), type='l', col=cols, bty='l', xlab='', ylab='', xlim=c(1,52), main=county.labs[x], lty=linetypes)
+  matplot(t(d1.c.alt[,1:52,x,'rsv']), type='l', col=cols, bty='l', xlab='', ylab='', xlim=c(1,52), main=county.labs[x], lty=linetypes)
 abline(v=36, lty=2, col='gray')
 })
 ```
@@ -467,7 +461,7 @@ New England
 par(mfrow=c(2,2), mar=c(2,2,1,0))
 
 lapply(select.counties2, function(x){
-  matplot(t(d1.c.alt[,,x,'rsv']), type='l', col=cols, bty='l', xlab='', ylab='', xlim=c(1,52), main=county.labs[x], lty=linetypes)
+  matplot(t(d1.c.alt[,1:52,x,'rsv']), type='l', col=cols, bty='l', xlab='', ylab='', xlim=c(1,52), main=county.labs[x], lty=linetypes)
 abline(v=36, lty=2, col='gray')
 })
 
@@ -483,12 +477,12 @@ select.counties <- c(grep('US-CT', dimnames(d1.c.alt)[[3]] ) ,grep('US-RI', dimn
                      grep('US-VT', dimnames(d1.c.alt)[[3]] ) ,grep('US-ME', dimnames(d1.c.alt)[[3]] ) ) 
 county.labs <- substring( dimnames(d1.c.alt)[[3]], first=11)
 
-cols <- c(rep('gray',3),rgb(1,0,0,0.3),'blue','blue')
+cols <- c(rep('gray',4),rgb(1,0,0,0.3),'blue')
 linetypes=c(rep(1,5),2)
 counties <- dimnames(d1.c.alt)[[3]]
 par(mfrow=c(3,3), mar=c(2,2,1,0))
 lapply(select.counties, function(x){
-  matplot(t(d1.c.alt[,,x,'rsv']), type='l', col=cols, bty='l', xlab='', ylab='', xlim=c(1,52), main=county.labs[x], lty=linetypes)
+  matplot(t(d1.c.alt[,1:52,x,'rsv']), type='l', col=cols, bty='l', xlab='', ylab='', xlim=c(1,52), main=county.labs[x], lty=linetypes)
 abline(v=36, lty=2, col='gray')
 })
 
@@ -502,7 +496,7 @@ select.counties <- c(grep('US-NY', dimnames(d1.c.alt)[[3]] ) ,grep('US-NJ', dimn
                      grep('US-PA', dimnames(d1.c.alt)[[3]] )   ) 
 county.labs <- substring( dimnames(d1.c.alt)[[3]], first=11)
 
-cols <- c(rep('gray',3),rgb(1,0,0,0.3),'blue','blue')
+cols <- c(rep('gray',4),rgb(1,0,0,0.3),'blue')
 linetypes=c(rep(1,5),2)
 counties <- dimnames(d1.c.alt)[[3]]
 par(mfrow=c(3,3), mar=c(2,2,1,0))
