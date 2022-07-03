@@ -201,7 +201,7 @@ p1 <- ggplot(df1, aes(
   geom_line(aes(lty = epiyr)) +
   scale_color_manual(values = cols) +
   scale_linetype_manual(values = ltypes) +
-  labs(title = "Searches for 'RSV' in the US (Google trends)",
+  labs(title = "Searches for 'RSV' (Google trends), last 52 wks",
        x = element_blank(),
        y = element_blank()) +
   theme(
@@ -225,18 +225,6 @@ p1
 ```
 
 
-
-```{r, eval=F,fig.width=8, fig.height=6 ,results=FALSE, message=FALSE, warning=FALSE}
-cols <- c(rep('gray',4),rgb(1,0,0,0.3),'blue')
-linetypes=c(rep(1,5),2)
-states <- dimnames(d1.c.alt)[[3]]
-par(mfrow=c(5,5), mar=c(2,2,1,0))
-lapply(states, function(x){
-  matplot(t(d1.c.alt[,,x,'rsv']), type='l', col=cols, bty='l', xlab='', ylab='', xlim=c(1,52), main=x, lty=linetypes)
-abline(v=36, lty=2, col='gray')
-})
-
-```
 
 ## Selected states, most recent 52 weeks
 
@@ -264,7 +252,7 @@ This plots the time series on a circular axis, showing the shift in timing compa
 ```{r, fig.width=8, fig.height=6,results=FALSE, message=FALSE, warning=FALSE}
 df1$epiyr <- as.factor(df1$epiyr)
 
-cols <- c(rep('gray',4),'blue','blue')
+cols <- c(rep('gray',3),'red','blue')
 linetypes=c(rep(1,5),1,1)
 
 theme_set(theme_minimal())
