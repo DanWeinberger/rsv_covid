@@ -363,7 +363,8 @@ d1.c.alt[dimnames(d1.c.alt)[[1]][dim(d1.c.alt)[1]]
 
 countries <- c( 'AR','BR','ZA')
 
-cols <- c(rep('gray',4),'red','blue')
+cols <- c(rep('gray',4),rgb(1,0,0,0.3),'blue')
+
 linestypes <- c(rep(1,5),2)
 
 states <- dimnames(d1.c.alt)[[3]]
