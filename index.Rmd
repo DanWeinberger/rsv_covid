@@ -27,7 +27,7 @@ library(lubridate)
 library(plotrix)
 source('./R/runIfExpired.R')
 
-updateData = FALSE
+updateData = F
 
 ```
 
@@ -123,6 +123,31 @@ names(metro.trends) <- metros$name[n.states > 0]
 
 ```
 
+
+
+```{bash, eval=F}
+python -m pip install --upgrade pip
+
+python -m pip install pytrends
+pip install pytrends --upgrade
+
+```
+
+```{python, eval=F}
+from pytrends.request import TrendReq  
+
+pytrends = TrendReq(hl='en-US', tz=360)   
+
+kw_list = ['rsv'] # list of keywords to get data   
+
+pytrends.build_payload(kw_list, cat=0)   
+
+data = pytrends.interest_over_time()  
+
+data = data.reset_index()    
+
+
+```
 
 
 
