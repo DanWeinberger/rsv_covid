@@ -27,7 +27,7 @@ library(lubridate)
 library(plotrix)
 source('./R/runIfExpired.R')
 
-updateData = F
+updateData = T
 
 ```
 
