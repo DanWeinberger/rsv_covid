@@ -233,7 +233,7 @@ states <- dimnames(d1.c.alt)[[3]]
 par(mfrow=c(3,3), mar=c(2,2,1,0))
 lapply(select.states, function(x){
   matplot(t(d1.c.alt[,1:52,x,'rsv']), type='l', col=cols, bty='l', xlab='', ylab='', xlim=c(1,52), main=x, lty=linetypes)
-abline(v=36, lty=2, col='gray')
+#abline(v=36, lty=2, col='gray')
 })
 
 ```
