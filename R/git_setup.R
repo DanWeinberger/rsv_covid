@@ -1,2 +1,5 @@
-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
+library("usethis")
+git_sitrep()
+usethis::create_github_token()
+gitcreds::gitcreds_set()
 usethis::git_sitrep()
