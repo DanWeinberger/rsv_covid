@@ -124,6 +124,70 @@ names(metro.trends) <- metros$name[n.states > 0]
 ```
 
 
+```{r}
+
+l1b <- country.trends
+
+l2 <- lapply(l1b,  '[[','interest_over_time')
+
+d1 <- do.call( 'rbind.data.frame', l2)
+
+d1.m <- melt(d1[,c('date','hits','geo')], id.vars=c('geo','date'))
+  
+library(plotly)
+
+
+test1 <- d1.m %>%
+  filter(date<='2022-02-01') %>%
+  arrange(geo, date) %>%
+  group_by(geo) %>%
+  mutate(t=row_number() , 
+         weekN=week(date),
+         
+         latest_wk= max((t == max(t))*weekN ),  
+         latest_t= max((t == max(t))*t ),  
+          year=as.factor(year(date)),
+         x_t1 = 2* ((t)/52.1775 - floor(1/2 + (t)/52.1775 )), #unshifted sawtooth
+         
+         latest_x_t1 =min((t == max(t))*x_t1 ), #value of sawtooth at latest t 
+         t_shift =  t + (1 - latest_x_t1)/2*52.1775 - 1/52.1775, #t shifted so that sawtooth=1 at las t?
+         x_t = 2* ((t_shift)/52.1775 - floor(1/2 + (t_shift)/52.1775 )),
+
+         cycleN=floor(1/2 + (t_shift)/52.1775 ),
+         cycleN= as.factor(cycleN -min(cycleN) +1) ,
+         week_plot = 52.1775+ (x_t + min(x_t))* 52.1775/ ( range(x_t)[2]-range(x_t)[1] )
+  ) %>%
+  ungroup() %>%
+  group_by(cycleN) %>%
+  mutate(year_numeric=year(date),
+    year_label =paste( min(year_numeric), max(year_numeric), sep=', ')) 
+         
+  p1 <- test1 %>%
+      filter(geo=='ZA') %>%
+  ggplot( aes(x=week_plot, y=value, group=year_label, color=year_label, text=date)) +
+   geom_line() +
+      theme_classic() 
+ggplotly(p1)
+
+     plot(test1$date, test1$week_plot, col=test1$cycleN)
+
+
+
+     x_t=1
+     1=(300+x)/52.1775 - floor(0.5 + (300+x)/52.1775)
+                      x_t = 5.74   - 6 = -0.251
+                      
+                      1- -0.251
+                      
+                      0.749/2 *52.7445 
+                      
+                      1.251/2*52.7445
+                      #(add 34.1775)
+                      
+     
+```
+
+
 
 
 ## US States
