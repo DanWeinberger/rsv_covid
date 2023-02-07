@@ -34,6 +34,37 @@ updateData = FALSE
 In these plots, we pulled searches for 'RSV' from Google trends using the gtrendsR package. Previous work found that Google searches for 'RSV' capture spatiotemporal variations in RSV activity across the US: https://www.biorxiv.org/content/10.1101/607119v1
 
 
+```{bash}
+pip install pytrends
+```
+
+
+
+```{bash, eval=F}
+python -m pip install --upgrade pip
+
+python -m pip install pytrends
+pip install pytrends --upgrade
+
+```
+
+```{python, eval=F}
+from pytrends.request import TrendReq  
+
+pytrends = TrendReq(hl='en-US', tz=360)   
+
+kw_list = ['rsv'] # list of keywords to get data   
+
+pytrends.build_payload(kw_list, cat=0)   
+
+data = pytrends.interest_over_time()  
+
+data = data.reset_index()    
+
+
+```
+
+
 ```{r}
 
 if(updateData==T){
